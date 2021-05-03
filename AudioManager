@@ -1,0 +1,126 @@
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.UI;
+using UnityEngine.Audio;
+
+public class AudioManager : MonoBehaviour
+{
+    public AudioMixer audioMixer;
+    public AudioMixerGroup musicGroup,environmentGroup,playerFXGroup,playerVoiceGroup,FXGroup;
+    static AudioManager instance;
+
+    public AudioClip[] AudioClipArray;                      //音频数组
+
+    private  Dictionary<string, AudioClip> _DicAudio; //音频库(字典)
+    private  AudioSource audioBGM;                    //音频源
+    private  AudioSource[] audioSources;
+
+ 
+    public Slider volumeSliderBGM,volumeSliderFX;
+    public float Volume { get; set; }
+
+    void Awake()
+    {
+        if (instance != null)
+        {
+            Destroy(gameObject);
+            return;
+        }
+        instance = this;
+        DontDestroyOnLoad(this);
+
+
+        //初始化音频库：创建空间，把音频数组里所有元素放入音频库
+        _DicAudio = new Dictionary<string, AudioClip>();
+        foreach (var item in AudioClipArray)
+        {
+            _DicAudio.Add(item.name, item);
+        }
+
+
+        //指定背景音乐的音频源,第一个分给BGM，其余的分给特效
+        audioBGM = GetComponent<AudioSource>();
+        if (audioBGM == null)
+            audioBGM = gameObject.AddComponent<AudioSource>();
+        audioSources = GetComponents<AudioSource>();
+    }
+
+
+    //播放特效音乐函数：
+   public static void PlayEffect(string acName)
+    {
+        //当传进来的名字不为空且在音频库中
+        if (instance. _DicAudio.ContainsKey(acName) && !string.IsNullOrEmpty(acName))
+        {
+            AudioClip ac = instance. _DicAudio[acName];
+            PlayEffect(ac);
+        }
+    }
+
+    private static void PlayEffect(AudioClip ac)
+    {
+        if (ac)
+        {
+            //遍历当前持有的AudioSource组件
+            instance. audioSources = instance. gameObject.GetComponents<AudioSource>();
+
+            //audioSources[0]被BGM的播放占用，因此从[1]开始
+            for (int i = 1; i < instance. audioSources.Length; i++)
+            {
+                //当有音频源空闲时，则用其播放
+                if (!instance. audioSources[i].isPlaying)
+                {
+                    instance. audioSources[i].loop = false;
+                    instance. audioSources[i].clip = ac;
+                    instance. audioSources[i].volume = instance. Volume;
+                    instance. audioSources[i].Play();
+                    return;
+                }
+            }
+
+            //当没有多余的音频源空闲时，则创建新的音频源
+            AudioSource newAs = instance. gameObject.AddComponent<AudioSource>();
+            newAs.loop = false;
+            newAs.clip = ac;
+            newAs.volume = instance. Volume;
+            newAs.Play();
+        }
+    }
+
+    //播放BGM函数：
+    public static void BGMPlay(string acName)
+    {
+        //当传进来的名字不为空且在音频库中
+        if (instance. _DicAudio.ContainsKey(acName) && !string.IsNullOrEmpty(acName))
+        {
+            AudioClip ac = instance. _DicAudio[acName];
+            BGMPlay(ac);
+        }
+    }
+
+    private static void BGMPlay(AudioClip ac)
+    {
+        if (ac)
+        {
+            instance. audioBGM.clip = ac;
+            instance. audioBGM.loop = true;
+            instance.audioBGM.outputAudioMixerGroup = instance. musicGroup;   //输出到音频控制器
+            //audioBGM.volume = instance. Volume;
+            instance. audioBGM.Play();
+        }
+    }
+
+    //停止当前BGM的播放函数：
+    public static void StopBGMPlay()
+    {
+        instance.audioBGM.Stop();
+    }
+
+    //设置音量函数：供slider调用
+    public void SetVolume(float volume)
+    {
+        
+        audioMixer.SetFloat("MasterVolume", volume);
+    }
+}
