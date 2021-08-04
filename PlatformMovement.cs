@@ -8,7 +8,7 @@ public class PlatformMovement : MonoBehaviour
     public CapsuleCollider2D coll;
     public Animator ani;
 
-    public float speed, jumpForce,currentSpeed;
+    public float speed, jumpForce,croushJumpForce,currentSpeed;
     public Transform[] groundCheckPoint;
     public Transform[] headCheckPoint;
     public LayerMask GroundMask;
@@ -40,7 +40,7 @@ public class PlatformMovement : MonoBehaviour
         if (Input.GetButtonDown("Jump")&&jumpCount>0)
         {
             jumpPressed = true;
-        }
+        } 
         if (Input.GetKey(KeyCode.LeftControl))
         {
             croushPressed = true;
@@ -53,9 +53,11 @@ public class PlatformMovement : MonoBehaviour
     }
     private void FixedUpdate()
     {
-        
+       
         GroundMovement();
-        Jump();
+        //此处选择跳跃的方式
+        //Jumps();
+        CroushJump();
         Croush();
     }
     void GroundMovement()
@@ -99,7 +101,7 @@ public class PlatformMovement : MonoBehaviour
             isHeading = false;
         }
     }
-    void Jump()
+    void Jumps()
     {
         if (isGround)
         {
@@ -119,6 +121,30 @@ public class PlatformMovement : MonoBehaviour
             jumpCount--;
             jumpPressed = false;
         }
+    }
+    void CroushJump()
+    {
+        if (isGround)
+        {
+            jumpCount = 1;
+            isJump = false;
+        }
+        if (isGround && jumpPressed&&!isCroush)
+        {
+            jumpCount--;
+            isJump = true;
+            rig.velocity = new Vector2(rig.velocity.x, jumpForce);
+            jumpPressed = false;
+        }
+        else if(isGround &&jumpPressed && isCroush)
+        {
+            jumpCount--;
+            isJump = true;
+            isCroush = false;
+            rig.velocity = new Vector2(rig.velocity.x, croushJumpForce);
+            jumpPressed = false;
+        }
+       
     }
     void Croush()
     {
