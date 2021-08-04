@@ -5,15 +5,26 @@ using UnityEngine;
 public class AudioManagerNew : Singleton<AudioManagerNew>
 {
     [SerializeField] AudioSource FXPlayer;
+    [SerializeField] AudioSource musicPlayer;
+    [SerializeField] AudioSource ambientPlayer;
     // Start is called before the first frame update
     protected override void Awake()
     {
         base.Awake();       
     }
+    public void PlayMusic(AudioData audio)
+    {
+        musicPlayer.loop = true;
+
+        musicPlayer.PlayOneShot(audio.clip,audio.volume);
+    }
+    public void AmbientPlayer(AudioData audio)
+    {
+        ambientPlayer.loop = true;
+        ambientPlayer.PlayOneShot(audio.clip, audio.volume);
+    }
     public void PlayFX(AudioData audio)
     {
-        /*FXPlayer.clip = clip;
-        FXPlayer.volume = volume;*/
         FXPlayer.PlayOneShot(audio. clip, audio.volume);
     }
     public void PlayRandomFX(AudioData audio)
