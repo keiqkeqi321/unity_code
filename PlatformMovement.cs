@@ -4,23 +4,39 @@ using UnityEngine;
 
 public class PlatformMovement : MonoBehaviour
 {
+    [Header ("compoent")]
     public Rigidbody2D rig;
     public CapsuleCollider2D coll;
     public Animator ani;
 
+
+    [Header("value")]
+    [SerializeField] float grabDistance;
+    public int jumpCount;
+    public float grabJumpForce;
     public float speed, jumpForce,croushJumpForce,currentSpeed;
+
+
+    [Header ("checkPoint")]
     public Transform[] groundCheckPoint;
     public Transform[] headCheckPoint;
+    public Transform[] grabCheckPoint;
+
+
+    [Header("state")]
+    public bool isGround, isJump ,isHang;
+    public  bool isHeading,isCroush;
+    bool jumpPressed,croushPressed;
+
+
+    [Header ("other")]
     public LayerMask GroundMask;
 
-    public bool isGround, isJump ;
 
-    bool jumpPressed,croushPressed;
-    public  bool isHeading,isCroush;
+    float grabDirection;
     Vector2 croushColSize, croushColOffset;
     Vector2 standColsize, standColOffset;
     float horizontalMove;
-    public int jumpCount;
     void Start()
     {
         rig = GetComponent<Rigidbody2D>();
@@ -37,6 +53,7 @@ public class PlatformMovement : MonoBehaviour
     void Update()
     {
         PhysicCheck();
+        horizontalMove = Input.GetAxisRaw("Horizontal");
         if (Input.GetButtonDown("Jump")&&jumpCount>0)
         {
             jumpPressed = true;
@@ -49,19 +66,29 @@ public class PlatformMovement : MonoBehaviour
         {
             croushPressed = false;
         }
-        horizontalMove = Input.GetAxisRaw("Horizontal");
+       
     }
     private void FixedUpdate()
     {
        
-        GroundMovement();
+        Movement();
         //此处选择跳跃的方式
         //Jumps();
         CroushJump();
         Croush();
     }
-    void GroundMovement()
+    void Movement()
     {
+        if (isHang)
+        {
+            if (horizontalMove == grabDirection || jumpPressed)
+            {
+                rig.bodyType = RigidbodyType2D.Dynamic;
+                rig.AddForce(new Vector2(20f, grabJumpForce), ForceMode2D.Impulse);
+                isHang = false;
+                jumpPressed = false;
+            }
+        }
         if (isCroush)
         {
             currentSpeed = 0.5f * speed;
@@ -99,6 +126,32 @@ public class PlatformMovement : MonoBehaviour
         else
         {
             isHeading = false;
+        }
+
+
+
+
+        /*抓握*/
+        grabDirection = transform.localScale.x;
+        Vector2 grabDir = new Vector2(grabDirection, 0f);
+        RaycastHit2D grabCheak =Physics2D.Raycast(grabCheckPoint[0].position, grabDir, grabDistance, GroundMask);
+        RaycastHit2D grabCheak1 = Physics2D.Raycast(grabCheckPoint[1].position, grabDir, grabDistance, GroundMask);
+        RaycastHit2D grabCheak2 = Physics2D.Raycast(grabCheckPoint[2].position, Vector2.down, grabDistance, GroundMask);
+        if (!isGround && rig.velocity.y < 0 && !grabCheak && grabCheak1 && grabCheak2&&!isCroush)
+        {
+            Vector3 pos = transform.position;
+            pos.x += grabDirection * grabCheak1.distance;
+            pos.y -= grabCheak2.distance;
+            transform.position = pos;
+            rig.bodyType = RigidbodyType2D.Static;
+            isHang = true;
+        }
+    }
+    void Hang()
+    {
+        if (isHang)
+        {
+
         }
     }
     void Jumps()
