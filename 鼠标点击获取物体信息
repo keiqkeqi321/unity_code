@@ -1,0 +1,17 @@
+相机发出射线通过  鼠标点在屏幕的位置   打到我们看到的真实位置
+
+Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
+        if(Physics.Raycast(ray,out hitInfor))
+        {
+            switch (hitInfor.collider.tag)
+            {
+                case "Ground":
+                    Cursor.SetCursor(targetTexture[1],new Vector2 (16,16),CursorMode.Auto);
+                    break;
+                case "Enemy":
+                    Cursor.SetCursor(targetTexture[2], Vector2.zero, CursorMode.Auto);
+                    break;
+            }
+
+            Debug.DrawRay(ray.origin, ray.direction * 10, Color.yellow);
+        }
