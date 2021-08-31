@@ -1,0 +1,251 @@
+两层继承，两层控制
+
+
+
+
+PlyayCtrl:挂载在角色身上的脚本，用来控制状态机，（控制状态机中状态的切换）。
+Machine:状态机器类，储存所有状态，对状态进行切换，和状态的保持工作。
+Base: 状态的基类，给子类提供接口（方法）
+Template:泛型类当前状态的拥有者
+Idle Run Attack …等各个具体状态的实现(播放动画)
+
+
+
+两层继承：
+状态基类封装可重写的  onEnter onStay onExit 方法供重写，还有继承他的状态类ID。
+状态拥有者类 Template 泛型基类用于保存状态类的owner拥有者。泛型是为了兼容不同的拥有者；它来继承 stateBase；相当于状态类继承了两个类；
+Idle run attack 等具体状态类  继承状态拥有者类。具体化 onEnter onStay onExit三个方法。实现具体功能；
+
+
+Machine状态机用于状态的     存储，切换，保持  总之就是控制具体的状态类的使用；（状态保持用update来执行，通过enemycontroller的lateupdate来调用这里的update）
+具体的controller类  例如enemycontroller类用于  启用状态机，给状态机添加具体状态，编写条件让状态机转换状态  
+
+StateBase:
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+using UnityEngine.AI;
+/// <summary>
+/// 状态的基础类：给子类提供方法
+/// </summary>
+/// 
+public class StateBase: MonoBehaviour
+{
+
+    //给每个状态设置一个ID
+    public int ID { get; set; }
+
+    //被当前机器所控制
+    public StateMachine machine;
+
+    public StateBase(int id)
+    {
+        this.ID = id;
+    }
+
+    //给子类提供方法
+    public virtual void OnEnter(params object[] args) { }
+    public virtual void OnStay(params object[] args) { }
+    public virtual void OnExit(params object[] args) { }
+
+}
+
+
+StateTemPlate状态拥有者泛型：
+public class StateTemplate<T> : StateBase
+{
+
+    public T owner;   //拥有者(范型)
+
+    public StateTemplate(int id, T o) : base(id)
+    {
+        owner = o;
+    }
+}
+
+
+
+具体状态类：
+using System.Collections;
+using System.Collections.Generic;
+using UnityEngine;
+
+public class GuardState : StateTemplate<EnemyController>
+{
+    public GuardState(int id, EnemyController enemy) : base(id,enemy )
+    {
+
+    }
+    public override void OnEnter(params object[] args)
+    {
+        base.OnEnter(args);
+        owner.ani.Play("IdleNormal");
+        
+    }
+    public override void OnStay(params object[] args)
+    {
+        Debug.Log("Guard");
+        base.OnStay(args);
+        if(Vector3.Distance(owner.transform.position, owner.thisPos.position)>0.6)
+        {
+            owner.agent.destination = owner.thisPos.position;
+            owner.ani.SetBool("Run", true);
+            
+        }
+        else if(Vector3.Distance(owner.transform.position, owner.thisPos.position) < 0.6)
+        {
+            owner.ani.SetBool("Run", false);
+        }
+
+    }
+    public override void OnExit(params object[] args)
+    {
+        base.OnExit(args);
+    }
+}
+
+
+
+状态机类：
+using UnityEngine;
+using System.Collections;
+using System.Collections.Generic;
+
+/// <summary>
+/// 状态机器类：由Player控制。完成状态的存储，切换，和状态的保持
+/// </summary>
+
+public class StateMachine
+{
+
+    //用来存储当前机器所控制的所有状态
+    public Dictionary<int, StateBase> stateChache;
+
+    //定义上一个状态
+    public StateBase prviousState;
+    //定义当前状态
+    public StateBase currentState;
+
+    //机器初始化时，没有上一个状态
+    public StateMachine(StateBase beginState)
+    {
+        prviousState = null;
+        currentState = beginState;
+
+        stateChache = new Dictionary<int, StateBase>();
+        //把状态添加到集合中
+        AddState(beginState);
+        Debug.Log("machine");
+        currentState.OnEnter();
+        if (currentState != null)
+        {
+            Debug.Log("ok");
+        }
+    }
+
+    public void AddState(StateBase state)
+    {
+        if (!stateChache.ContainsKey(state.ID))
+        {
+            stateChache.Add(state.ID, state);
+            state.machine = this;
+        }
+    }
+
+    //通过Id来切换状态
+    public void TranslateState(int id)
+    {
+        if (!stateChache.ContainsKey(id))
+        {
+            return;
+        }
+
+        prviousState = currentState;
+        currentState = stateChache[id];
+        Debug.Log("machine1");
+        currentState.OnEnter();
+    }
+
+    //状态保持
+    public void Update()
+    {
+        
+        //if (currentState != null)
+        {
+            currentState.OnStay();
+            Debug.Log("onStay");
+        }
+    }
+}
+
+
+
+状态拥有者类；
+public enum PlayerState
+{
+    None,
+    Idle,
+    Run,
+    Attack
+}
+
+public class Player : MonoBehaviour {
+
+    public Animation ani;
+    public PlayerState ps = PlayerState.Idle;
+
+    //控制机器
+    public StateMachine machine;
+
+    void Start()
+    {
+        ani = GetComponent<Animation> ();
+
+        IdleState idle = new IdleState (1, this);
+        RunState run = new RunState (2, this);
+        AttackState attack = new AttackState (3, this);
+
+        machine = new StateMachine (idle);
+        machine.AddState (run);
+        machine.AddState (attack);
+    }
+
+    void Update()
+    {
+        if (Input.GetMouseButtonDown (0)) {
+            ps = PlayerState.Attack;
+        }
+        if (Input.GetKey (KeyCode.A)) {
+            ps = PlayerState.Run;
+        }
+        if (Input.GetKeyUp (KeyCode.A)) {
+            ps = PlayerState.Idle;
+        }
+
+        //根据枚举 让状态机器类去切换状态
+        UpdateAnimation ();
+    }
+    private void UpdateAnimation()
+    {
+        switch (ps) {
+        case PlayerState.Idle:
+            machine.TranslateState (1);
+            break;
+        case PlayerState.Run:
+            machine.TranslateState (2);
+            break;
+        case PlayerState.Attack:
+            machine.TranslateState (3);
+            break;
+        }
+    }
+
+    void LateUpdate()
+    {
+        machine.Update ();
+    }
+}
+
+
+
+
